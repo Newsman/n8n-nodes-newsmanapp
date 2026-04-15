@@ -1,0 +1,48 @@
+{
+  "name": "n8n-nodes-newsmanapp",
+  "version": "0.1.1",
+  "description": "NewsMAN community node for n8n",
+  "main": "index.js",
+  "files": [
+    "dist",
+    "nodes",
+    "credentials",
+    "README.md",
+    "LICENSE",
+    "index.js"
+  ],
+  "scripts": {
+    "build": "node ./node_modules/typescript/bin/tsc -p tsconfig.json && npm run copy:assets",
+    "copy:assets": "node scripts/copy-assets.mjs",
+    "lint": "node ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
+    "dev": "npm run build",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "newsman",
+    "email-marketing",
+    "transactional-email"
+  ],
+  "author": "Adrian Manuca",
+  "license": "ISC",
+  "type": "commonjs",
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "n8n-workflow": "^2.13.0",
+    "typescript": "^6.0.2"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/NewsmanApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Newsman/Newsman.node.js"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-newsmanapp",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "NewsMAN community node for n8n",
   "main": "index.js",
   "files": [

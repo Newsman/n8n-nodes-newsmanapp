@@ -25,7 +25,10 @@
     "email-marketing",
     "transactional-email"
   ],
-  "author": "Adrian Manuca",
+  "author": {
+    "name": "Adrian Manuca",
+    "email": "manuca@dazoot.ro"
+  },
   "license": "ISC",
   "repository": {
     "type": "git",

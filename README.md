@@ -2,17 +2,25 @@
 
 NewsMAN community node for n8n.
 
-This package adds NewsMAN operations for subscriber management, segments, transactional email, and SMS.
+Use this node to manage subscribers and segments, send transactional emails, and send SMS through NewsMAN API v1.2.
+
+## Features
+
+- Lists: get available email and SMS lists
+- Subscribers: get by email, create or update, add tags
+- Segments: get segments, add subscriber to segment
+- Transactional: send one message to many recipients in a single API call
+- SMS: subscribe contacts and send one-off SMS messages
 
 ## Compatibility
 
 - n8n: tested on self-hosted n8n 2.x
-- Node.js: 20+ recommended for development/publishing
-- NewsMAN API: v1.2 REST (`ssl.newsman.app/api/1.2/rest`)
+- Node.js: 22+ recommended for local development and publishing
+- NewsMAN API: `https://ssl.newsman.app/api/1.2/rest/{userId}/{apiKey}/`
 
 ## Install
 
-### In n8n (Community Nodes)
+### n8n Community Nodes UI
 
 Install package:
 
@@ -28,51 +36,77 @@ Then restart n8n.
 
 ## Credentials
 
-Create **NewsMAN API** credentials in n8n and set:
+Create **NewsMAN API** credentials in n8n:
 
 - `User ID`
 - `API Key`
 
-Base API format used by this node:
+## Quick Start
 
-`https://ssl.newsman.app/api/1.2/rest/{userId}/{apiKey}/`
+Example flow for transactional email:
+
+1. Prepare recipient rows in a previous node (for example Edit Fields), one recipient per item:
+   - `email` (required)
+   - `name` (optional)
+   - `params` (optional object)
+2. Add **NewsMAN** node and choose **Send Transactional Message**.
+3. Set **Recipients Source** to **From Previous Items (Single API Call)**.
+4. Configure sender fields, subject, and HTML.
+5. Execute the node.
+
+## Transactional Recipients Modes
+
+For **Send Transactional Message**, choose one mode:
+
+- **From Previous Items (Single API Call)**: use all incoming items as recipients in one API call
+- **From Expression (JSON Array)**: provide an expression that resolves to an array
+- **Manual JSON**: provide the recipients array directly in the field
+
+Recipient object format:
+
+```json
+{
+  "email": "recipient@example.com",
+  "name": "Recipient Name",
+  "params": {
+    "name": "Recipient Name"
+  }
+}
+```
 
 ## Operations
 
-### Subscriber
-
-- `Get already existing subscriber by Email` -> `subscriber.getByEmail`
-- `Save Subscriber to List` -> `subscriber.saveSubscribe`
-- `Subscriber - Add Tag` -> `subscriber.addTag`
-
-### Segment
-
-- `Get Segments (by List)` -> `segment.all`
-- `Add Subscriber to Segment` -> `segment.addSubscriber`
-- `Add Subscriber to Segment (by Email)` -> `subscriber.getByEmail` + `segment.addSubscriber`
-
-### List
+### Lists
 
 - `Get Lists` -> `list.all`
+- `Get SMS Lists` -> `sms.lists`
 
-### Transactional
+### Subscribers
 
-- `Transactional - Message Send` -> `transactional.messageSend`
+- `Get Subscriber` -> `subscriber.getByEmail`
+- `Create or Update Subscriber` -> `subscriber.saveSubscribe`
+- `Add Tag to Subscriber` -> `subscriber.addTag`
+- `Create or Update SMS Subscriber` -> `sms.saveSubscribe`
 
-### SMS
+### Segments
 
-- `SMS - Get Lists` -> `sms.lists`
-- `SMS - Save Subscribe` -> `sms.saveSubscribe`
-- `SMS - Send One` -> `sms.sendone`
+- `Get Segments` -> `segment.all`
+- `Add Subscriber to Segment` -> `segment.addSubscriber`
+- `Add Subscriber to Segment by Email` -> `subscriber.getByEmail` + `segment.addSubscriber`
 
-## Output notes
+### Messaging
 
-- `saveSubscribe` and `sms.saveSubscribe` map scalar API results to:
+- `Send Transactional Message` -> `transactional.messageSend`
+- `Send SMS` -> `sms.sendone`
+
+## Output Notes
+
+- `Create or Update Subscriber` and `Create or Update SMS Subscriber` normalize scalar responses to:
   - `{ "subscriber_id": <id> }`
-- `subscriber.addTag` maps boolean result to:
-  - `{ "success": true|false }`
+- `Add Tag to Subscriber` normalizes boolean responses to:
+  - `{ "success": true | false }`
 
-This makes downstream n8n expressions easier, for example:
+This helps downstream expressions like:
 
 `{{$json.subscriber_id}}`
 
@@ -80,32 +114,9 @@ This makes downstream n8n expressions easier, for example:
 
 ```bash
 npm install
-npm run build
 npm run lint
+npm run build
 ```
-
-## Local Docker test
-
-Mount this package into your n8n custom extensions path and restart n8n.
-
-## Release (npm)
-
-1. Update `version` in `package.json`
-2. Run:
-   - `npm run build`
-   - `npm run lint`
-   - `npm pack` (optional verification)
-3. Publish:
-   - `npm login`
-   - `npm publish --access public`
-
-## Community submission checklist
-
-- Public npm package with `n8n-community-node-package` keyword
-- Public GitHub repository with README and license
-- Clear operation docs and credential setup
-- Working icon and sensible output structure
-- CI checks for build/lint
 
 ## License
 

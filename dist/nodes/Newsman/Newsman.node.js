@@ -31,11 +31,11 @@ class Newsman {
                         value: 'getLists',
                     },
                     {
-                        name: 'Get already existing subscriber by Email',
+                        name: 'Get Subscriber',
                         value: 'getSubscriberByEmail',
                     },
                     {
-                        name: 'Get Segments (by List)',
+                        name: 'Get Segments',
                         value: 'getSegments',
                     },
                     {
@@ -43,31 +43,31 @@ class Newsman {
                         value: 'addSegmentSubscriber',
                     },
                     {
-                        name: 'Add Subscriber to Segment (by Email)',
+                        name: 'Add Subscriber to Segment by Email',
                         value: 'addSegmentSubscriberByEmail',
                     },
                     {
-                        name: 'Save Subscriber to List',
+                        name: 'Create or Update Subscriber',
                         value: 'saveSubscribe',
                     },
                     {
-                        name: 'Subscriber - Add Tag',
+                        name: 'Add Tag to Subscriber',
                         value: 'subscriberAddTag',
                     },
                     {
-                        name: 'Transactional - Message Send',
+                        name: 'Send Transactional Message',
                         value: 'messageSend',
                     },
                     {
-                        name: 'SMS - Get Lists',
+                        name: 'Get SMS Lists',
                         value: 'smsLists',
                     },
                     {
-                        name: 'SMS - Save Subscribe',
+                        name: 'Create or Update SMS Subscriber',
                         value: 'smsSaveSubscribe',
                     },
                     {
-                        name: 'SMS - Send One',
+                        name: 'Send SMS',
                         value: 'smsSendOne',
                     },
                 ],
@@ -78,6 +78,8 @@ class Newsman {
                 name: 'listId',
                 type: 'number',
                 default: 0,
+                description: 'NewsMAN list ID. You can map this from a previous node, for example from Get Lists.',
+                placeholder: 'e.g. 12345',
                 displayOptions: {
                     show: {
                         operation: [
@@ -97,6 +99,8 @@ class Newsman {
                 name: 'segmentId',
                 type: 'number',
                 default: 0,
+                description: 'NewsMAN segment ID. You can map this from a previous node output.',
+                placeholder: 'e.g. 6789',
                 displayOptions: {
                     show: {
                         operation: ['addSegmentSubscriber', 'addSegmentSubscriberByEmail'],
@@ -108,6 +112,8 @@ class Newsman {
                 name: 'subscriberId',
                 type: 'number',
                 default: 0,
+                description: 'NewsMAN subscriber ID. You can map this from a previous node output.',
+                placeholder: 'e.g. 456789',
                 displayOptions: {
                     show: {
                         operation: ['addSegmentSubscriber', 'subscriberAddTag'],
@@ -119,6 +125,7 @@ class Newsman {
                 name: 'tag',
                 type: 'string',
                 default: '',
+                placeholder: 'e.g. vip',
                 displayOptions: {
                     show: {
                         operation: ['subscriberAddTag'],
@@ -130,6 +137,7 @@ class Newsman {
                 name: 'email',
                 type: 'string',
                 default: '',
+                placeholder: 'e.g. person@example.com',
                 displayOptions: {
                     show: {
                         operation: [
@@ -145,6 +153,8 @@ class Newsman {
                 name: 'firstname',
                 type: 'string',
                 default: '',
+                description: 'First name for the subscriber',
+                placeholder: 'e.g. Nathan',
                 displayOptions: {
                     show: {
                         operation: ['saveSubscribe'],
@@ -156,6 +166,8 @@ class Newsman {
                 name: 'lastname',
                 type: 'string',
                 default: '',
+                description: 'Last name for the subscriber',
+                placeholder: 'e.g. Smith',
                 displayOptions: {
                     show: {
                         operation: ['saveSubscribe'],
@@ -167,6 +179,8 @@ class Newsman {
                 name: 'ip',
                 type: 'string',
                 default: '127.0.0.1',
+                description: 'IP address used for subscription metadata',
+                placeholder: 'e.g. 203.0.113.10',
                 displayOptions: {
                     show: {
                         operation: ['saveSubscribe'],
@@ -178,7 +192,8 @@ class Newsman {
                 name: 'propsJson',
                 type: 'string',
                 default: '{"source":"N8N"}',
-                description: 'Example: {"city":"London"}',
+                description: 'Additional subscriber properties as JSON',
+                placeholder: 'e.g. {"city":"London"}',
                 displayOptions: {
                     show: {
                         operation: ['saveSubscribe'],
@@ -190,6 +205,8 @@ class Newsman {
                 name: 'telephone',
                 type: 'string',
                 default: '',
+                description: 'Telephone number of the subscriber',
+                placeholder: 'e.g. 40700111222',
                 displayOptions: {
                     show: {
                         operation: ['smsSaveSubscribe'],
@@ -201,6 +218,8 @@ class Newsman {
                 name: 'smsFirstname',
                 type: 'string',
                 default: '',
+                description: 'First name for the SMS subscriber',
+                placeholder: 'e.g. Nathan',
                 displayOptions: {
                     show: {
                         operation: ['smsSaveSubscribe'],
@@ -212,6 +231,8 @@ class Newsman {
                 name: 'smsLastname',
                 type: 'string',
                 default: '',
+                description: 'Last name for the SMS subscriber',
+                placeholder: 'e.g. Smith',
                 displayOptions: {
                     show: {
                         operation: ['smsSaveSubscribe'],
@@ -223,6 +244,8 @@ class Newsman {
                 name: 'smsIp',
                 type: 'string',
                 default: '127.0.0.1',
+                description: 'IP address used for SMS subscription metadata',
+                placeholder: 'e.g. 203.0.113.10',
                 displayOptions: {
                     show: {
                         operation: ['smsSaveSubscribe'],
@@ -234,7 +257,8 @@ class Newsman {
                 name: 'smsPropsJson',
                 type: 'string',
                 default: '{"source":"N8N"}',
-                description: 'Example: {"city":"London"}',
+                description: 'Additional SMS subscriber properties as JSON',
+                placeholder: 'e.g. {"city":"London"}',
                 displayOptions: {
                     show: {
                         operation: ['smsSaveSubscribe'],
@@ -246,6 +270,8 @@ class Newsman {
                 name: 'smsText',
                 type: 'string',
                 default: '',
+                description: 'SMS message content',
+                placeholder: 'e.g. Hello from NewsMAN',
                 displayOptions: {
                     show: {
                         operation: ['smsSendOne'],
@@ -258,6 +284,7 @@ class Newsman {
                 type: 'string',
                 default: '',
                 description: 'Telephone number of the recipient',
+                placeholder: 'e.g. 40700111222',
                 displayOptions: {
                     show: {
                         operation: ['smsSendOne'],
@@ -296,7 +323,8 @@ class Newsman {
                 name: 'recipientEmailField',
                 type: 'string',
                 default: 'email',
-                description: 'Field name from previous node items',
+                description: 'Field name for recipient email in each incoming item',
+                placeholder: 'e.g. email',
                 displayOptions: {
                     show: {
                         operation: ['messageSend'],
@@ -309,7 +337,8 @@ class Newsman {
                 name: 'recipientNameField',
                 type: 'string',
                 default: 'name',
-                description: 'Optional field name from previous node items',
+                description: 'Optional field name for recipient name in each incoming item',
+                placeholder: 'e.g. name',
                 displayOptions: {
                     show: {
                         operation: ['messageSend'],
@@ -322,7 +351,8 @@ class Newsman {
                 name: 'recipientParamsField',
                 type: 'string',
                 default: 'params',
-                description: 'Optional object field from previous node items (for per-recipient template params)',
+                description: 'Optional object field for per-recipient template params in each incoming item',
+                placeholder: 'e.g. params',
                 displayOptions: {
                     show: {
                         operation: ['messageSend'],
@@ -335,6 +365,8 @@ class Newsman {
                 name: 'messageFromName',
                 type: 'string',
                 default: 'NewsMAN',
+                description: 'Sender name shown in the email',
+                placeholder: 'e.g. NewsMAN Team',
                 displayOptions: {
                     show: {
                         operation: ['messageSend'],
@@ -346,6 +378,8 @@ class Newsman {
                 name: 'messageFromEmail',
                 type: 'string',
                 default: 'sender@example.com',
+                description: 'Sender email address shown in the email',
+                placeholder: 'e.g. team@example.com',
                 displayOptions: {
                     show: {
                         operation: ['messageSend'],
@@ -357,6 +391,8 @@ class Newsman {
                 name: 'messageSubject',
                 type: 'string',
                 default: 'Message subject',
+                description: 'Email subject line',
+                placeholder: 'e.g. Your weekly newsletter',
                 displayOptions: {
                     show: {
                         operation: ['messageSend'],
@@ -368,6 +404,7 @@ class Newsman {
                 name: 'messageHtml',
                 type: 'string',
                 default: '<b>Hello {{name}}</b>',
+                description: 'Email body in HTML format',
                 typeOptions: {
                     rows: 6,
                 },
@@ -395,6 +432,7 @@ class Newsman {
                 name: 'recipientsJson',
                 type: 'json',
                 default: '[ { "email":"recipient@example.com", "name":"Recipient 1", "params":{"name":"Adrian Test"} } ]',
+                description: 'JSON array of recipient objects with at least "email"',
                 displayOptions: {
                     show: {
                         operation: ['messageSend'],
@@ -407,6 +445,7 @@ class Newsman {
                 name: 'paramsJson',
                 type: 'json',
                 default: '{"source":"n8n"}',
+                description: 'Optional global template params sent for all recipients',
                 displayOptions: {
                     show: {
                         operation: ['messageSend'],
@@ -418,6 +457,8 @@ class Newsman {
                 name: 'accountId',
                 type: 'string',
                 default: '',
+                description: 'Optional NewsMAN account ID for transactional sending',
+                placeholder: 'e.g. 1001',
                 displayOptions: {
                     show: {
                         operation: ['messageSend'],

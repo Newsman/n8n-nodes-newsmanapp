@@ -120,5 +120,5 @@ npm run build
 
 ## License
 
-ISC
+MIT
 

@@ -3,6 +3,7 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 export class NewsmanApi implements ICredentialType {
   name = 'newsmanApi';
   displayName = 'NewsMAN API';
+  documentationUrl = 'https://ssl.newsman.app/api/';
 
   properties: INodeProperties[] = [
     {
@@ -19,4 +20,13 @@ export class NewsmanApi implements ICredentialType {
       default: '',
     },
   ];
+
+  test = {
+    request: {
+      baseURL:
+        '=https://ssl.newsman.app/api/1.2/rest/{{$credentials.userId}}/{{$credentials.apiKey}}',
+      url: '/list.all.json',
+      method: 'GET',
+    },
+  };
 }

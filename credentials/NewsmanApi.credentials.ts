@@ -1,4 +1,8 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import {
+  ICredentialTestRequest,
+  ICredentialType,
+  INodeProperties,
+} from 'n8n-workflow';
 
 export class NewsmanApi implements ICredentialType {
   name = 'newsmanApi';
@@ -21,12 +25,11 @@ export class NewsmanApi implements ICredentialType {
     },
   ];
 
-  test = {
+  test: ICredentialTestRequest = {
     request: {
       baseURL:
-        '=https://ssl.newsman.app/api/1.2/rest/{{$credentials.userId}}/{{$credentials.apiKey}}',
+        '=https://ssl.newsman.app/api/1.2/rest/{{$credentials?.userId}}/{{$credentials?.apiKey}}',
       url: '/list.all.json',
-      method: 'GET',
     },
   };
 }

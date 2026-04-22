@@ -4,6 +4,7 @@ exports.NewsmanApi = void 0;
 class NewsmanApi {
     name = 'newsmanApi';
     displayName = 'NewsMAN API';
+    documentationUrl = 'https://ssl.newsman.app/api/';
     properties = [
         {
             displayName: 'User ID',
@@ -19,5 +20,11 @@ class NewsmanApi {
             default: '',
         },
     ];
+    test = {
+        request: {
+            baseURL: '=https://ssl.newsman.app/api/1.2/rest/{{$credentials?.userId}}/{{$credentials?.apiKey}}',
+            url: '/list.all.json',
+        },
+    };
 }
 exports.NewsmanApi = NewsmanApi;

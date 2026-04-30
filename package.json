@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-newsmanapp",
   "homepage": "https://github.com/Newsman/n8n-nodes-newsmanapp#readme",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "NewsMAN community node for n8n",
   "main": "index.js",
   "files": [

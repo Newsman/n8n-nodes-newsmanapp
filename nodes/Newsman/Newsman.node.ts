@@ -156,7 +156,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'First Name (optional)',
+        displayName: 'First Name',
         name: 'firstname',
         type: 'string',
         default: '',
@@ -169,7 +169,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Last Name (optional)',
+        displayName: 'Last Name',
         name: 'lastname',
         type: 'string',
         default: '',
@@ -182,9 +182,10 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Subscriber IP (required)',
+        displayName: 'Subscriber IP',
         name: 'ip',
         type: 'string',
+        required: true,
         default: '127.0.0.1',
         description: 'IP address used for subscription metadata',
         placeholder: 'e.g. 203.0.113.10',
@@ -195,7 +196,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Props JSON (optional)',
+        displayName: 'Props JSON',
         name: 'propsJson',
         type: 'string',
         default: '{"source":"N8N"}',
@@ -221,7 +222,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'First Name (optional)',
+        displayName: 'First Name',
         name: 'smsFirstname',
         type: 'string',
         default: '',
@@ -234,7 +235,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Last Name (optional)',
+        displayName: 'Last Name',
         name: 'smsLastname',
         type: 'string',
         default: '',
@@ -247,9 +248,10 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Subscriber IP (required)',
+        displayName: 'Subscriber IP',
         name: 'smsIp',
         type: 'string',
+        required: true,
         default: '127.0.0.1',
         description: 'IP address used for SMS subscription metadata',
         placeholder: 'e.g. 203.0.113.10',
@@ -260,7 +262,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Props JSON (optional)',
+        displayName: 'Props JSON',
         name: 'smsPropsJson',
         type: 'string',
         default: '{"source":"N8N"}',
@@ -341,7 +343,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Recipient Name Field (optional)',
+        displayName: 'Recipient Name Field',
         name: 'recipientNameField',
         type: 'string',
         default: 'name',
@@ -355,7 +357,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Recipient Params Field (optional)',
+        displayName: 'Recipient Params Field',
         name: 'recipientParamsField',
         type: 'string',
         default: 'params',
@@ -438,9 +440,10 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Recipients JSON (required)',
+        displayName: 'Recipients JSON',
         name: 'recipientsJson',
         type: 'json',
+        required: true,
         default:
           '[ { "email":"recipient@example.com", "name":"Recipient 1", "params":{"name":"Adrian Test"} } ]',
         description: 'JSON array of recipient objects with at least "email"',
@@ -452,7 +455,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Global Params JSON (optional)',
+        displayName: 'Global Params JSON',
         name: 'paramsJson',
         type: 'json',
         default: '{"source":"n8n"}',
@@ -464,7 +467,7 @@ export class Newsman implements INodeType {
         },
       },
       {
-        displayName: 'Account ID (optional)',
+        displayName: 'Account ID',
         name: 'accountId',
         type: 'string',
         default: '',

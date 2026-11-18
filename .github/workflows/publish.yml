@@ -89,10 +89,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Auth: prefer repo secret N8N_TOKEN (automation token). If unset/empty,
-      # npm Trusted Publishing via OIDC (id-token: write) is used instead.
-      # A stale/invalid token yields HTTP 404 on PUT to the registry.
+      # Auth via npm Trusted Publishing (OIDC only).
+      # Do not set NODE_AUTH_TOKEN at all — an empty env var overrides OIDC and
+      # yields HTTP 404 on PUT. Trusted Publisher must match this workflow file:
+      # Newsman/n8n-nodes-newsmanapp → publish.yml (no GitHub Environment).
       - name: Publish
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.N8N_TOKEN }}

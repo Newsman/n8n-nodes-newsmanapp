@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-newsmanapp",
   "homepage": "https://github.com/Newsman/n8n-nodes-newsmanapp#readme",
-  "version": "0.1.21",
+  "version": "0.2.0",
   "description": "NewsMAN community node for n8n",
   "main": "index.js",
   "files": [
@@ -48,7 +48,8 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/NewsmanApi.credentials.js"
+      "dist/credentials/NewsmanApi.credentials.js",
+      "dist/credentials/NewsmanTeamAlerts.credentials.js"
     ],
     "nodes": [
       "dist/nodes/Newsman/Newsman.node.js"

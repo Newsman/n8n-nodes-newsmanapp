@@ -1,4 +1,5 @@
 import {
+  IAuthenticateGeneric,
   ICredentialTestRequest,
   ICredentialType,
   INodeProperties,
@@ -7,7 +8,7 @@ import {
 export class NewsmanApi implements ICredentialType {
   name = 'newsmanApi';
   displayName = 'NewsMAN API';
-  documentationUrl = 'https://ssl.newsman.app/api/';
+  documentationUrl = 'https://api.newsman.app/docs/en';
 
   properties: INodeProperties[] = [
     {
@@ -25,11 +26,27 @@ export class NewsmanApi implements ICredentialType {
     },
   ];
 
+  authenticate: IAuthenticateGeneric = {
+    type: 'generic',
+    properties: {
+      headers: {
+        Authorization:
+          '=Bearer {{$credentials.userId}}-{{$credentials.apiKey}}',
+      },
+    },
+  };
+
+  // Put the Bearer header on the test request itself. NewsMAN returns HTTP 400
+  // (not 401) when Authorization is missing, which n8n surfaces as "Bad Request".
   test: ICredentialTestRequest = {
     request: {
-      baseURL:
-        '=https://ssl.newsman.app/api/1.2/rest/{{$credentials?.userId}}/{{$credentials?.apiKey}}',
-      url: '/list.all.json',
+      baseURL: 'https://api.newsman.app',
+      url: '/v2/list/all',
+      method: 'GET',
+      headers: {
+        Authorization:
+          '=Bearer {{$credentials.userId}}-{{$credentials.apiKey}}',
+      },
     },
   };
 }

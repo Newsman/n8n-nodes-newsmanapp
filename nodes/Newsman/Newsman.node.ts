@@ -1,9 +1,18 @@
 import {
+  ICredentialDataDecryptedObject,
   IExecuteFunctions,
   INodeExecutionData,
   INodeType,
   INodeTypeDescription,
 } from 'n8n-workflow';
+import { buildNewsmanProperties } from './descriptionProperties';
+import { buildStandardCdnUrl, CdnResizeMode } from './helpers/cdn';
+import {
+  isInternalOpsEnabled,
+  sendTeamChatAlert,
+} from './helpers/internalOps';
+import { parseEmailList, parseJson } from './helpers/json';
+import { normalizeProductGroup } from './helpers/products';
 
 export class Newsman implements INodeType {
   description: INodeTypeDescription = {
@@ -23,463 +32,16 @@ export class Newsman implements INodeType {
         name: 'newsmanApi',
         required: true,
       },
+      ...(isInternalOpsEnabled()
+        ? [
+            {
+              name: 'newsmanTeamAlerts',
+              required: false,
+            },
+          ]
+        : []),
     ],
-    properties: [
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        options: [
-          {
-            name: 'Get Lists',
-            value: 'getLists',
-          },
-          {
-            name: 'Get Subscriber',
-            value: 'getSubscriberByEmail',
-          },
-          {
-            name: 'Get Segments',
-            value: 'getSegments',
-          },
-          {
-            name: 'Add Subscriber to Segment',
-            value: 'addSegmentSubscriber',
-          },
-          {
-            name: 'Add Subscriber to Segment by Email',
-            value: 'addSegmentSubscriberByEmail',
-          },
-          {
-            name: 'Create or Update Subscriber',
-            value: 'saveSubscribe',
-          },
-          {
-            name: 'Add Tag to Subscriber',
-            value: 'subscriberAddTag',
-          },
-          {
-            name: 'Send Transactional Message',
-            value: 'messageSend',
-          },
-          {
-            name: 'Get SMS Lists',
-            value: 'smsLists',
-          },
-          {
-            name: 'Create or Update SMS Subscriber',
-            value: 'smsSaveSubscribe',
-          },
-          {
-            name: 'Send SMS',
-            value: 'smsSendOne',
-          },
-        ],
-        default: 'getLists',
-      },
-      {
-        displayName: 'List ID',
-        name: 'listId',
-        type: 'number',
-        default: 0,
-        description:
-          'NewsMAN list ID. You can map this from a previous node, for example from Get Lists.',
-        placeholder: 'e.g. 12345',
-        displayOptions: {
-          show: {
-            operation: [
-              'getSegments',
-              'getSubscriberByEmail',
-              'saveSubscribe',
-              'addSegmentSubscriberByEmail',
-              'messageSend',
-              'smsSaveSubscribe',
-              'smsSendOne',
-            ],
-          },
-        },
-      },
-      {
-        displayName: 'Segment ID',
-        name: 'segmentId',
-        type: 'number',
-        default: 0,
-        description:
-          'NewsMAN segment ID. You can map this from a previous node output.',
-        placeholder: 'e.g. 6789',
-        displayOptions: {
-          show: {
-            operation: ['addSegmentSubscriber', 'addSegmentSubscriberByEmail'],
-          },
-        },
-      },
-      {
-        displayName: 'Subscriber ID',
-        name: 'subscriberId',
-        type: 'number',
-        default: 0,
-        description:
-          'NewsMAN subscriber ID. You can map this from a previous node output.',
-        placeholder: 'e.g. 456789',
-        displayOptions: {
-          show: {
-            operation: ['addSegmentSubscriber', 'subscriberAddTag'],
-          },
-        },
-      },
-      {
-        displayName: 'Tag',
-        name: 'tag',
-        type: 'string',
-        default: '',
-        placeholder: 'e.g. vip',
-        displayOptions: {
-          show: {
-            operation: ['subscriberAddTag'],
-          },
-        },
-      },
-      {
-        displayName: 'Email',
-        name: 'email',
-        type: 'string',
-        default: '',
-        placeholder: 'e.g. person@example.com',
-        displayOptions: {
-          show: {
-            operation: [
-              'saveSubscribe',
-              'getSubscriberByEmail',
-              'addSegmentSubscriberByEmail',
-            ],
-          },
-        },
-      },
-      {
-        displayName: 'First Name',
-        name: 'firstname',
-        type: 'string',
-        default: '',
-        description: 'First name for the subscriber',
-        placeholder: 'e.g. Nathan',
-        displayOptions: {
-          show: {
-            operation: ['saveSubscribe'],
-          },
-        },
-      },
-      {
-        displayName: 'Last Name',
-        name: 'lastname',
-        type: 'string',
-        default: '',
-        description: 'Last name for the subscriber',
-        placeholder: 'e.g. Smith',
-        displayOptions: {
-          show: {
-            operation: ['saveSubscribe'],
-          },
-        },
-      },
-      {
-        displayName: 'Subscriber IP',
-        name: 'ip',
-        type: 'string',
-        required: true,
-        default: '127.0.0.1',
-        description: 'IP address used for subscription metadata',
-        placeholder: 'e.g. 203.0.113.10',
-        displayOptions: {
-          show: {
-            operation: ['saveSubscribe'],
-          },
-        },
-      },
-      {
-        displayName: 'Props JSON',
-        name: 'propsJson',
-        type: 'string',
-        default: '{"source":"N8N"}',
-        description: 'Additional subscriber properties as JSON',
-        placeholder: 'e.g. {"city":"London"}',
-        displayOptions: {
-          show: {
-            operation: ['saveSubscribe'],
-          },
-        },
-      },
-      {
-        displayName: 'Telephone',
-        name: 'telephone',
-        type: 'string',
-        default: '',
-        description: 'Telephone number of the subscriber',
-        placeholder: 'e.g. 40700111222',
-        displayOptions: {
-          show: {
-            operation: ['smsSaveSubscribe'],
-          },
-        },
-      },
-      {
-        displayName: 'First Name',
-        name: 'smsFirstname',
-        type: 'string',
-        default: '',
-        description: 'First name for the SMS subscriber',
-        placeholder: 'e.g. Nathan',
-        displayOptions: {
-          show: {
-            operation: ['smsSaveSubscribe'],
-          },
-        },
-      },
-      {
-        displayName: 'Last Name',
-        name: 'smsLastname',
-        type: 'string',
-        default: '',
-        description: 'Last name for the SMS subscriber',
-        placeholder: 'e.g. Smith',
-        displayOptions: {
-          show: {
-            operation: ['smsSaveSubscribe'],
-          },
-        },
-      },
-      {
-        displayName: 'Subscriber IP',
-        name: 'smsIp',
-        type: 'string',
-        required: true,
-        default: '127.0.0.1',
-        description: 'IP address used for SMS subscription metadata',
-        placeholder: 'e.g. 203.0.113.10',
-        displayOptions: {
-          show: {
-            operation: ['smsSaveSubscribe'],
-          },
-        },
-      },
-      {
-        displayName: 'Props JSON',
-        name: 'smsPropsJson',
-        type: 'string',
-        default: '{"source":"N8N"}',
-        description: 'Additional SMS subscriber properties as JSON',
-        placeholder: 'e.g. {"city":"London"}',
-        displayOptions: {
-          show: {
-            operation: ['smsSaveSubscribe'],
-          },
-        },
-      },
-      {
-        displayName: 'Text',
-        name: 'smsText',
-        type: 'string',
-        default: '',
-        description: 'SMS message content',
-        placeholder: 'e.g. Hello from NewsMAN',
-        displayOptions: {
-          show: {
-            operation: ['smsSendOne'],
-          },
-        },
-      },
-      {
-        displayName: 'To',
-        name: 'smsTo',
-        type: 'string',
-        default: '',
-        description: 'Telephone number of the recipient',
-        placeholder: 'e.g. 40700111222',
-        displayOptions: {
-          show: {
-            operation: ['smsSendOne'],
-          },
-        },
-      },
-      {
-        displayName: 'Recipients Source',
-        name: 'recipientsSource',
-        type: 'options',
-        noDataExpression: true,
-        options: [
-          {
-            name: 'From Previous Items (Single API Call)',
-            value: 'fromInputItems',
-          },
-          {
-            name: 'From Expression (JSON Array)',
-            value: 'fromExpression',
-          },
-          {
-            name: 'Manual JSON',
-            value: 'manualJson',
-          },
-        ],
-        default: 'fromInputItems',
-        description:
-          'How to build the recipients list. For "From Previous Items", connect this node directly after the node that outputs one item per recipient (e.g. Edit Fields). Do not use expressions on this dropdown—use "From Expression" if you need a custom array.',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-          },
-        },
-      },
-      {
-        displayName: 'Recipient Email Field',
-        name: 'recipientEmailField',
-        type: 'string',
-        default: 'email',
-        description: 'Field name for recipient email in each incoming item',
-        placeholder: 'e.g. email',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-            recipientsSource: ['fromInputItems'],
-          },
-        },
-      },
-      {
-        displayName: 'Recipient Name Field',
-        name: 'recipientNameField',
-        type: 'string',
-        default: 'name',
-        description: 'Optional field name for recipient name in each incoming item',
-        placeholder: 'e.g. name',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-            recipientsSource: ['fromInputItems'],
-          },
-        },
-      },
-      {
-        displayName: 'Recipient Params Field',
-        name: 'recipientParamsField',
-        type: 'string',
-        default: 'params',
-        description:
-          'Optional object field for per-recipient template params in each incoming item',
-        placeholder: 'e.g. params',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-            recipientsSource: ['fromInputItems'],
-          },
-        },
-      },
-      {
-        displayName: 'From Name',
-        name: 'messageFromName',
-        type: 'string',
-        default: 'NewsMAN',
-        description: 'Sender name shown in the email',
-        placeholder: 'e.g. NewsMAN Team',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-          },
-        },
-      },
-      {
-        displayName: 'From Email',
-        name: 'messageFromEmail',
-        type: 'string',
-        default: 'sender@example.com',
-        description: 'Sender email address shown in the email',
-        placeholder: 'e.g. team@example.com',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-          },
-        },
-      },
-      {
-        displayName: 'Subject',
-        name: 'messageSubject',
-        type: 'string',
-        default: 'Message subject',
-        description: 'Email subject line',
-        placeholder: 'e.g. Your weekly newsletter',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-          },
-        },
-      },
-      {
-        displayName: 'HTML',
-        name: 'messageHtml',
-        type: 'string',
-        default: '<b>Hello {{name}}</b>',
-        description: 'Email body in HTML format',
-        typeOptions: {
-          rows: 6,
-        },
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-          },
-        },
-      },
-      {
-        displayName: 'Recipients (JSON Array)',
-        name: 'recipientsExpression',
-        type: 'json',
-        default: '[]',
-        description:
-          'Must evaluate to an array of objects with at least "email". Example referencing another node: {{ $json.items }} or mapping all items: {{ $(\'Edit Fields\').all().map(i => ({ email: i.json.email, name: i.json.name })) }}',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-            recipientsSource: ['fromExpression'],
-          },
-        },
-      },
-      {
-        displayName: 'Recipients JSON',
-        name: 'recipientsJson',
-        type: 'json',
-        required: true,
-        default:
-          '[ { "email":"recipient@example.com", "name":"Recipient 1", "params":{"name":"Adrian Test"} } ]',
-        description: 'JSON array of recipient objects with at least "email"',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-            recipientsSource: ['manualJson'],
-          },
-        },
-      },
-      {
-        displayName: 'Global Params JSON',
-        name: 'paramsJson',
-        type: 'json',
-        default: '{"source":"n8n"}',
-        description: 'Optional global template params sent for all recipients',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-          },
-        },
-      },
-      {
-        displayName: 'Account ID',
-        name: 'accountId',
-        type: 'string',
-        default: '',
-        description: 'Optional NewsMAN account ID for transactional sending',
-        placeholder: 'e.g. 1001',
-        displayOptions: {
-          show: {
-            operation: ['messageSend'],
-          },
-        },
-      },
-    ],
+    properties: buildNewsmanProperties(),
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -490,7 +52,8 @@ export class Newsman implements INodeType {
 
     const unwrap = (axiosResponse: any) => axiosResponse?.data ?? axiosResponse;
 
-    const baseUrl = `https://ssl.newsman.app/api/1.2/rest/${credentials.userId}/${credentials.apiKey}/`;
+    const baseUrl = 'https://api.newsman.app/v2/';
+    const authToken = `${credentials.userId}-${credentials.apiKey}`;
 
     const newsmanRequest = async (options: {
       endpoint: string;
@@ -499,31 +62,54 @@ export class Newsman implements INodeType {
       qs?: Record<string, any>;
       body?: Record<string, any>;
     }): Promise<any> => {
-      const url = `${baseUrl}${options.endpoint}.${options.method}.json`;
+      const url = `${baseUrl}${options.endpoint}/${options.method}`;
 
       return await this.helpers.httpRequest({
         method: options.httpMethod,
         url,
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
         qs: options.qs,
         body: options.body,
         json: true,
       });
     };
 
-    const parseJson = (value: unknown, fieldName: string): any => {
-      if (value === null || value === undefined) return null;
-      if (typeof value === 'object') return value;
-
-      const trimmed = String(value)?.trim();
-      if (!trimmed) return null;
-
+    const maybeTeamAlert = async (
+      itemIndex: number,
+      message: string,
+    ): Promise<void> => {
+      if (!isInternalOpsEnabled()) return;
+      let alertsOn = false;
       try {
-        return JSON.parse(trimmed);
-      } catch (error) {
-        throw new Error(
-          `Invalid JSON for '${fieldName}'. ${(error as Error).message}`,
-        );
+        alertsOn = this.getNodeParameter(
+          'teamAlertsOnFailure',
+          itemIndex,
+          true,
+        ) as boolean;
+      } catch {
+        alertsOn = false;
       }
+      if (!alertsOn) return;
+
+      let teamCreds: ICredentialDataDecryptedObject | undefined;
+      try {
+        teamCreds = await this.getCredentials('newsmanTeamAlerts');
+      } catch {
+        return;
+      }
+      if (!teamCreds?.chatWebhookUrl) return;
+
+      await sendTeamChatAlert(
+        (opts) => this.helpers.httpRequest(opts),
+        {
+          chatWebhookUrl: String(teamCreds.chatWebhookUrl || ''),
+          chatChannel: String(teamCreds.chatChannel || ''),
+          chatUsername: String(teamCreds.chatUsername || ''),
+        },
+        message,
+      );
     };
 
     for (let i = 0; i < items.length; i++) {
@@ -531,298 +117,511 @@ export class Newsman implements INodeType {
 
       let response;
 
-      if (operation === 'getLists') {
-        response = await newsmanRequest({
-          endpoint: 'list',
-          method: 'all',
-          httpMethod: 'GET',
-        });
-      } else if (operation === 'getSubscriberByEmail') {
-        const listId = this.getNodeParameter('listId', i) as number;
-        const email = this.getNodeParameter('email', i) as string;
-        response = await newsmanRequest({
-          endpoint: 'subscriber',
-          method: 'getByEmail',
-          httpMethod: 'GET',
-          qs: { list_id: listId, email },
-        });
-      } else if (operation === 'getSegments') {
-        const listId = this.getNodeParameter('listId', i) as number;
-        response = await newsmanRequest({
-          endpoint: 'segment',
-          method: 'all',
-          httpMethod: 'GET',
-          qs: { list_id: listId },
-        });
-      } else if (operation === 'addSegmentSubscriber') {
-        const segmentId = this.getNodeParameter('segmentId', i) as number;
-        const subscriberId = this.getNodeParameter('subscriberId', i) as number;
-        response = await newsmanRequest({
-          endpoint: 'segment',
-          method: 'addSubscriber',
-          httpMethod: 'POST',
-          body: { segment_id: segmentId, subscriber_id: subscriberId },
-        });
-      } else if (operation === 'addSegmentSubscriberByEmail') {
-        const listId = this.getNodeParameter('listId', i) as number;
-        const segmentId = this.getNodeParameter('segmentId', i) as number;
-        const email = this.getNodeParameter('email', i) as string;
-
-        const subscriberResponse = await newsmanRequest({
-          endpoint: 'subscriber',
-          method: 'getByEmail',
-          httpMethod: 'GET',
-          qs: { list_id: listId, email },
-        });
-
-        const subscriber = Array.isArray(subscriberResponse)
-          ? subscriberResponse[0]
-          : subscriberResponse;
-        const subscriberId =
-          subscriber?.subscriber_id ??
-          subscriber?.subscriberId ??
-          subscriber?.id;
-
-        if (!subscriberId) {
-          throw new Error(
-            `Could not resolve subscriber_id for email '${email}' in list '${listId}'`,
-          );
-        }
-
-        const addResponse = await newsmanRequest({
-          endpoint: 'segment',
-          method: 'addSubscriber',
-          httpMethod: 'POST',
-          body: { segment_id: segmentId, subscriber_id: subscriberId },
-        });
-
-        response = {
-          subscriber,
-          addResult: addResponse,
-        };
-      } else if (operation === 'saveSubscribe') {
-        const listId = this.getNodeParameter('listId', i) as number;
-        const email = this.getNodeParameter('email', i) as string;
-        const firstnameRaw = this.getNodeParameter('firstname', i) as string;
-        const lastnameRaw = this.getNodeParameter('lastname', i) as string;
-        const ip = this.getNodeParameter('ip', i) as string;
-        const propsJson = this.getNodeParameter('propsJson', i) as string;
-
-        const firstname = firstnameRaw?.trim() ? firstnameRaw : null;
-        const lastname = lastnameRaw?.trim() ? lastnameRaw : null;
-        const props = parseJson(propsJson, 'propsJson');
-
-        response = await newsmanRequest({
-          endpoint: 'subscriber',
-          method: 'saveSubscribe',
-          httpMethod: 'POST',
-          body: {
-            list_id: listId,
-            email,
-            firstname,
-            lastname,
-            ip,
-            props: props ?? null,
-          },
-        });
-        const saveSubscribeData = unwrap(response);
-        if (
-          typeof saveSubscribeData === 'number' ||
-          typeof saveSubscribeData === 'string'
-        ) {
-          response = { subscriber_id: saveSubscribeData };
-        } else {
-          response = saveSubscribeData;
-        }
-      } else if (operation === 'messageSend') {
-        const recipientsSourceRaw = this.getNodeParameter(
-          'recipientsSource',
-          i,
-        ) as string;
-        const allowedSources = [
-          'fromInputItems',
-          'manualJson',
-          'fromExpression',
-        ] as const;
-        if (!allowedSources.includes(recipientsSourceRaw as any)) {
-          throw new Error(
-            'Recipients Source was not saved as a valid mode (often caused by using an expression on the dropdown). Clear the field, pick "From Previous Items" and connect the upstream node, or pick "From Expression (JSON Array)" and set the array there.',
-          );
-        }
-        const recipientsSource = recipientsSourceRaw as (typeof allowedSources)[number];
-
-        // Single API call: only first input item runs the send
-        if (
-          (recipientsSource === 'fromInputItems' ||
-            recipientsSource === 'fromExpression') &&
-          i > 0
-        ) {
-          continue;
-        }
-
-        const listId = this.getNodeParameter('listId', i) as number;
-        const messageFromName = this.getNodeParameter(
-          'messageFromName',
-          i,
-        ) as string;
-        const messageFromEmail = this.getNodeParameter(
-          'messageFromEmail',
-          i,
-        ) as string;
-        const messageSubject = this.getNodeParameter(
-          'messageSubject',
-          i,
-        ) as string;
-        const messageHtml = this.getNodeParameter('messageHtml', i) as string;
-        const paramsJson = this.getNodeParameter('paramsJson', i) as unknown;
-        const accountId = this.getNodeParameter('accountId', i) as string;
-
-        const message: Record<string, any> = {
-          from_name: messageFromName,
-          from_email: messageFromEmail,
-          subject: messageSubject,
-          html: messageHtml,
-        };
-        const params = parseJson(paramsJson, 'paramsJson');
-
-        let recipients: any = null;
-        if (recipientsSource === 'fromInputItems') {
-          const emailField = this.getNodeParameter(
-            'recipientEmailField',
-            i,
-          ) as string;
-          const nameField = this.getNodeParameter('recipientNameField', i) as string;
-          const paramsField = this.getNodeParameter(
-            'recipientParamsField',
-            i,
-          ) as string;
-
-          recipients = items.map((item, itemIndex) => {
-            const row = (item as any).json ?? {};
-            const email = row[emailField];
-            if (!email) {
-              throw new Error(
-                `Missing recipient email at input item ${itemIndex} using field '${emailField}'`,
-              );
-            }
-
-            const recipient: Record<string, any> = { email };
-            if (nameField && row[nameField] !== undefined) {
-              recipient.name = row[nameField];
-            }
-            if (paramsField && row[paramsField] !== undefined) {
-              recipient.params = row[paramsField];
-            }
-            return recipient;
+      try {
+        if (operation === 'getLists') {
+          response = await newsmanRequest({
+            endpoint: 'list',
+            method: 'all',
+            httpMethod: 'GET',
           });
-        } else if (recipientsSource === 'fromExpression') {
-          const recipientsExpression = this.getNodeParameter(
-            'recipientsExpression',
+        } else if (operation === 'getSubscriberByEmail') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const email = this.getNodeParameter('email', i) as string;
+          response = await newsmanRequest({
+            endpoint: 'subscriber',
+            method: 'getByEmail',
+            httpMethod: 'GET',
+            qs: { list_id: listId, email },
+          });
+        } else if (operation === 'getSegments') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          response = await newsmanRequest({
+            endpoint: 'segment',
+            method: 'all',
+            httpMethod: 'GET',
+            qs: { list_id: listId },
+          });
+        } else if (operation === 'addSegmentSubscriber') {
+          const segmentId = this.getNodeParameter('segmentId', i) as number;
+          const subscriberId = this.getNodeParameter(
+            'subscriberId',
             i,
-          ) as unknown;
-          recipients = parseJson(recipientsExpression, 'recipientsExpression');
-        } else {
-          const recipientsJson = this.getNodeParameter(
-            'recipientsJson',
+          ) as number;
+          response = await newsmanRequest({
+            endpoint: 'segment',
+            method: 'addSubscriber',
+            httpMethod: 'POST',
+            body: { segment_id: segmentId, subscriber_id: subscriberId },
+          });
+        } else if (operation === 'addSegmentSubscriberByEmail') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const segmentId = this.getNodeParameter('segmentId', i) as number;
+          const email = this.getNodeParameter('email', i) as string;
+
+          const subscriberResponse = await newsmanRequest({
+            endpoint: 'subscriber',
+            method: 'getByEmail',
+            httpMethod: 'GET',
+            qs: { list_id: listId, email },
+          });
+
+          const subscriber = Array.isArray(subscriberResponse)
+            ? subscriberResponse[0]
+            : subscriberResponse;
+          const subscriberId =
+            subscriber?.subscriber_id ??
+            subscriber?.subscriberId ??
+            subscriber?.id;
+
+          if (!subscriberId) {
+            throw new Error(
+              `Could not resolve subscriber_id for email '${email}' in list '${listId}'`,
+            );
+          }
+
+          const addResponse = await newsmanRequest({
+            endpoint: 'segment',
+            method: 'addSubscriber',
+            httpMethod: 'POST',
+            body: { segment_id: segmentId, subscriber_id: subscriberId },
+          });
+
+          response = {
+            subscriber,
+            addResult: addResponse,
+          };
+        } else if (operation === 'saveSubscribe') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const email = this.getNodeParameter('email', i) as string;
+          const firstnameRaw = this.getNodeParameter('firstname', i) as string;
+          const lastnameRaw = this.getNodeParameter('lastname', i) as string;
+          const ip = this.getNodeParameter('ip', i) as string;
+          const propsJson = this.getNodeParameter('propsJson', i) as string;
+
+          const firstname = firstnameRaw?.trim() ? firstnameRaw : null;
+          const lastname = lastnameRaw?.trim() ? lastnameRaw : null;
+          const props = parseJson(propsJson, 'propsJson');
+
+          response = await newsmanRequest({
+            endpoint: 'subscriber',
+            method: 'saveSubscribe',
+            httpMethod: 'POST',
+            body: {
+              list_id: listId,
+              email,
+              firstname,
+              lastname,
+              ip,
+              props: props ?? null,
+            },
+          });
+          const saveSubscribeData = unwrap(response);
+          if (
+            typeof saveSubscribeData === 'number' ||
+            typeof saveSubscribeData === 'string'
+          ) {
+            response = { subscriber_id: saveSubscribeData };
+          } else {
+            response = saveSubscribeData;
+          }
+        } else if (operation === 'messageSend') {
+          const recipientsSourceRaw = this.getNodeParameter(
+            'recipientsSource',
             i,
-          ) as unknown;
-          recipients = parseJson(recipientsJson, 'recipientsJson');
-        }
+          ) as string;
+          const allowedSources = [
+            'fromInputItems',
+            'manualJson',
+            'fromExpression',
+          ] as const;
+          if (!allowedSources.includes(recipientsSourceRaw as any)) {
+            throw new Error(
+              'Recipients Source was not saved as a valid mode (often caused by using an expression on the dropdown). Clear the field, pick "From Previous Items" and connect the upstream node, or pick "From Expression (JSON Array)" and set the array there.',
+            );
+          }
+          const recipientsSource =
+            recipientsSourceRaw as (typeof allowedSources)[number];
 
-        if (!message.from_name || !message.from_email || !message.subject || !message.html) {
-          throw new Error(
-            'messageSend requires From Name, From Email, Subject, and HTML',
-          );
-        }
-        if (recipients === null) {
-          throw new Error('Recipients must be a valid JSON array');
-        }
-        if (!Array.isArray(recipients)) {
-          throw new Error(
-            'Recipients must be an array of objects with at least "email"',
-          );
-        }
+          if (
+            (recipientsSource === 'fromInputItems' ||
+              recipientsSource === 'fromExpression') &&
+            i > 0
+          ) {
+            continue;
+          }
 
-        const body: Record<string, any> = {
-          list_id: listId,
-          message,
-          recipients,
-          params: params ?? null,
-        };
-        if (accountId?.trim()) body.account_id = accountId.trim();
+          const listId = this.getNodeParameter('listId', i) as number;
+          const messageFromName = this.getNodeParameter(
+            'messageFromName',
+            i,
+          ) as string;
+          const messageFromEmail = this.getNodeParameter(
+            'messageFromEmail',
+            i,
+          ) as string;
+          const messageSubject = this.getNodeParameter(
+            'messageSubject',
+            i,
+          ) as string;
+          const messageHtml = this.getNodeParameter(
+            'messageHtml',
+            i,
+          ) as string;
+          const paramsJson = this.getNodeParameter('paramsJson', i) as unknown;
+          const accountId = this.getNodeParameter('accountId', i) as string;
 
-        response = await newsmanRequest({
-          endpoint: 'transactional',
-          method: 'messageSend',
-          httpMethod: 'POST',
-          body,
-        });
-      } else if (operation === 'subscriberAddTag') {
-        const subscriberId = this.getNodeParameter('subscriberId', i) as number;
-        const tag = this.getNodeParameter('tag', i) as string;
+          const message: Record<string, any> = {
+            from_name: messageFromName,
+            from_email: messageFromEmail,
+            subject: messageSubject,
+            html: messageHtml,
+          };
+          const params = parseJson(paramsJson, 'paramsJson');
 
-        const addTagResponse = await newsmanRequest({
-          endpoint: 'subscriber',
-          method: 'addTag',
-          httpMethod: 'POST',
-          body: { subscriber_id: subscriberId, tag },
-        });
+          let recipients: any = null;
+          if (recipientsSource === 'fromInputItems') {
+            const emailField = this.getNodeParameter(
+              'recipientEmailField',
+              i,
+            ) as string;
+            const nameField = this.getNodeParameter(
+              'recipientNameField',
+              i,
+            ) as string;
+            const paramsField = this.getNodeParameter(
+              'recipientParamsField',
+              i,
+            ) as string;
 
-        response = { success: Boolean(unwrap(addTagResponse)) };
-      } else if (operation === 'smsLists') {
-        response = await newsmanRequest({
-          endpoint: 'sms',
-          method: 'lists',
-          httpMethod: 'GET',
-        });
-      } else if (operation === 'smsSaveSubscribe') {
-        const listId = this.getNodeParameter('listId', i) as number;
-        const telephone = this.getNodeParameter('telephone', i) as string;
-        const firstnameRaw = this.getNodeParameter('smsFirstname', i) as string;
-        const lastnameRaw = this.getNodeParameter('smsLastname', i) as string;
-        const ip = this.getNodeParameter('smsIp', i) as string;
-        const propsJson = this.getNodeParameter('smsPropsJson', i) as string;
+            recipients = items.map((item, itemIndex) => {
+              const row = (item as any).json ?? {};
+              const email = row[emailField];
+              if (!email) {
+                throw new Error(
+                  `Missing recipient email at input item ${itemIndex} using field '${emailField}'`,
+                );
+              }
 
-        const firstname = firstnameRaw?.trim() ? firstnameRaw : null;
-        const lastname = lastnameRaw?.trim() ? lastnameRaw : null;
-        const props = parseJson(propsJson, 'smsPropsJson');
+              const recipient: Record<string, any> = { email };
+              if (nameField && row[nameField] !== undefined) {
+                recipient.name = row[nameField];
+              }
+              if (paramsField && row[paramsField] !== undefined) {
+                recipient.params = row[paramsField];
+              }
+              return recipient;
+            });
+          } else if (recipientsSource === 'fromExpression') {
+            const recipientsExpression = this.getNodeParameter(
+              'recipientsExpression',
+              i,
+            ) as unknown;
+            recipients = parseJson(recipientsExpression, 'recipientsExpression');
+          } else {
+            const recipientsJson = this.getNodeParameter(
+              'recipientsJson',
+              i,
+            ) as unknown;
+            recipients = parseJson(recipientsJson, 'recipientsJson');
+          }
 
-        const smsSaveSubscribeResponse = await newsmanRequest({
-          endpoint: 'sms',
-          method: 'saveSubscribe',
-          httpMethod: 'POST',
-          body: {
+          if (
+            !message.from_name ||
+            !message.from_email ||
+            !message.subject ||
+            !message.html
+          ) {
+            throw new Error(
+              'messageSend requires From Name, From Email, Subject, and HTML',
+            );
+          }
+          if (recipients === null) {
+            throw new Error('Recipients must be a valid JSON array');
+          }
+          if (!Array.isArray(recipients)) {
+            throw new Error(
+              'Recipients must be an array of objects with at least "email"',
+            );
+          }
+
+          const body: Record<string, any> = {
             list_id: listId,
-            telephone,
-            firstname,
-            lastname,
-            ip,
-            props: props ?? null,
-          },
-        });
+            message,
+            recipients,
+            params: params ?? null,
+          };
+          if (accountId?.trim()) body.account_id = accountId.trim();
 
-        const smsSaveSubscribeData = unwrap(smsSaveSubscribeResponse);
-        if (
-          typeof smsSaveSubscribeData === 'number' ||
-          typeof smsSaveSubscribeData === 'string'
-        ) {
-          response = { subscriber_id: smsSaveSubscribeData };
+          response = await newsmanRequest({
+            endpoint: 'transactional',
+            method: 'messageSend',
+            httpMethod: 'POST',
+            body,
+          });
+        } else if (operation === 'subscriberAddTag') {
+          const subscriberId = this.getNodeParameter(
+            'subscriberId',
+            i,
+          ) as number;
+          const tag = this.getNodeParameter('tag', i) as string;
+
+          const addTagResponse = await newsmanRequest({
+            endpoint: 'subscriber',
+            method: 'addTag',
+            httpMethod: 'POST',
+            body: { subscriber_id: subscriberId, tag },
+          });
+
+          response = { success: Boolean(unwrap(addTagResponse)) };
+        } else if (operation === 'smsLists') {
+          response = await newsmanRequest({
+            endpoint: 'sms',
+            method: 'lists',
+            httpMethod: 'GET',
+          });
+        } else if (operation === 'smsSaveSubscribe') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const telephone = this.getNodeParameter('telephone', i) as string;
+          const firstnameRaw = this.getNodeParameter(
+            'smsFirstname',
+            i,
+          ) as string;
+          const lastnameRaw = this.getNodeParameter('smsLastname', i) as string;
+          const ip = this.getNodeParameter('smsIp', i) as string;
+          const propsJson = this.getNodeParameter('smsPropsJson', i) as string;
+
+          const firstname = firstnameRaw?.trim() ? firstnameRaw : null;
+          const lastname = lastnameRaw?.trim() ? lastnameRaw : null;
+          const props = parseJson(propsJson, 'smsPropsJson');
+
+          const smsSaveSubscribeResponse = await newsmanRequest({
+            endpoint: 'sms',
+            method: 'saveSubscribe',
+            httpMethod: 'POST',
+            body: {
+              list_id: listId,
+              telephone,
+              firstname,
+              lastname,
+              ip,
+              props: props ?? null,
+            },
+          });
+
+          const smsSaveSubscribeData = unwrap(smsSaveSubscribeResponse);
+          if (
+            typeof smsSaveSubscribeData === 'number' ||
+            typeof smsSaveSubscribeData === 'string'
+          ) {
+            response = { subscriber_id: smsSaveSubscribeData };
+          } else {
+            response = smsSaveSubscribeData;
+          }
+        } else if (operation === 'smsSendOne') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const text = this.getNodeParameter('smsText', i) as string;
+          const to = this.getNodeParameter('smsTo', i) as string;
+
+          response = await newsmanRequest({
+            endpoint: 'sms',
+            method: 'sendone',
+            httpMethod: 'POST',
+            body: { list_id: listId, text, to },
+          });
+        } else if (operation === 'getProductGroups') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          response = await newsmanRequest({
+            endpoint: 'feeds',
+            method: 'getProductGroups',
+            httpMethod: 'GET',
+            qs: { list_id: listId },
+          });
+        } else if (operation === 'getProductGroup') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const productGroupId = this.getNodeParameter(
+            'productGroupId',
+            i,
+          ) as string;
+          response = await newsmanRequest({
+            endpoint: 'feeds',
+            method: 'getProductGroup',
+            httpMethod: 'GET',
+            qs: { list_id: listId, product_group_id: productGroupId },
+          });
+        } else if (operation === 'getProductGroupProducts') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const productGroupId = this.getNodeParameter(
+            'productGroupId',
+            i,
+          ) as string;
+          const feedOptions =
+            parseJson(
+              this.getNodeParameter('feedOptionsJson', i) as unknown,
+              'feedOptionsJson',
+            ) ?? {};
+          response = await newsmanRequest({
+            endpoint: 'feeds',
+            method: 'getProductGroupProducts',
+            httpMethod: 'GET',
+            qs: {
+              list_id: listId,
+              product_group_id: productGroupId,
+              // v2 GET: structured values must be JSON-encoded in the query string
+              options: JSON.stringify(feedOptions),
+            },
+          });
+        } else if (operation === 'getDraftInfo') {
+          const draftId = this.getNodeParameter('draftId', i) as string;
+          response = await newsmanRequest({
+            endpoint: 'draft',
+            method: 'getDraftInfo',
+            httpMethod: 'GET',
+            qs: { draft_id: draftId },
+          });
+        } else if (operation === 'parseDraftHandlebars') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const draftId = this.getNodeParameter('draftId', i) as string;
+          const compileParams =
+            parseJson(
+              this.getNodeParameter('compileParamsJson', i) as unknown,
+              'compileParamsJson',
+            ) ?? {};
+          response = await newsmanRequest({
+            endpoint: 'draft',
+            method: 'getParseDraftHTMLHandlebars',
+            httpMethod: 'POST',
+            body: {
+              list_id: listId,
+              draft_id: draftId,
+              compile_params: compileParams,
+            },
+          });
+        } else if (operation === 'createNewsletter') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const html = this.getNodeParameter('newsletterHtml', i) as string;
+          const textRaw = this.getNodeParameter('newsletterText', i) as string;
+          const newsletterProps =
+            parseJson(
+              this.getNodeParameter('newsletterPropsJson', i) as unknown,
+              'newsletterPropsJson',
+            ) ?? {};
+          const text = textRaw?.trim() ? textRaw : false;
+          const created = await newsmanRequest({
+            endpoint: 'newsletter',
+            method: 'create',
+            httpMethod: 'POST',
+            body: {
+              list_id: listId,
+              html: html || false,
+              text,
+              newsletter_props: newsletterProps,
+            },
+          });
+          const createdData = unwrap(created);
+          response =
+            typeof createdData === 'number' || typeof createdData === 'string'
+              ? { newsletter_id: createdData }
+              : createdData;
+        } else if (operation === 'scheduleNewsletter') {
+          const newsletterId = this.getNodeParameter(
+            'newsletterId',
+            i,
+          ) as string;
+          const scheduleTime = this.getNodeParameter(
+            'scheduleTime',
+            i,
+          ) as string;
+          response = await newsmanRequest({
+            endpoint: 'newsletter',
+            method: 'schedule',
+            httpMethod: 'POST',
+            body: {
+              newsletter_id: newsletterId,
+              schedule_time: scheduleTime,
+            },
+          });
+        } else if (operation === 'confirmNewsletter') {
+          const newsletterId = this.getNodeParameter(
+            'newsletterId',
+            i,
+          ) as string;
+          response = await newsmanRequest({
+            endpoint: 'newsletter',
+            method: 'confirm',
+            httpMethod: 'POST',
+            body: { newsletter_id: newsletterId },
+          });
+        } else if (operation === 'sendNewsletterConfirm') {
+          const newsletterId = this.getNodeParameter(
+            'newsletterId',
+            i,
+          ) as string;
+          response = await newsmanRequest({
+            endpoint: 'newsletter',
+            method: 'sendConfirm',
+            httpMethod: 'POST',
+            body: { newsletter_id: newsletterId },
+          });
+        } else if (operation === 'setNewsletterSegments') {
+          const newsletterId = this.getNodeParameter(
+            'newsletterId',
+            i,
+          ) as string;
+          const segmentIds =
+            parseJson(
+              this.getNodeParameter('segmentIdsJson', i) as unknown,
+              'segmentIdsJson',
+            ) ?? [];
+          if (!Array.isArray(segmentIds)) {
+            throw new Error('Segment IDs JSON must be an array');
+          }
+          response = await newsmanRequest({
+            endpoint: 'newsletter',
+            method: 'setSegments',
+            httpMethod: 'POST',
+            body: {
+              newsletter_id: newsletterId,
+              segment_ids: segmentIds,
+            },
+          });
+        } else if (operation === 'sendNewsletterTest') {
+          const listId = this.getNodeParameter('listId', i) as number;
+          const emails = parseEmailList(
+            this.getNodeParameter('testEmails', i) as unknown,
+            'Test Emails',
+          );
+          const subject = this.getNodeParameter('testSubject', i) as string;
+          const html = this.getNodeParameter('testHtml', i) as string;
+          const text = this.getNodeParameter('testText', i, '') as string;
+          response = await newsmanRequest({
+            endpoint: 'newsletter',
+            method: 'sendTest',
+            httpMethod: 'POST',
+            body: {
+              list_id: listId,
+              html,
+              text: text ?? '',
+              emails,
+              subject,
+            },
+          });
+        } else if (operation === 'scheduleAutomatedNewsletter') {
+          response = await runAutomatedNewsletter.call(this, {
+            itemIndex: i,
+            newsmanRequest,
+            unwrap,
+            maybeTeamAlert,
+          });
         } else {
-          response = smsSaveSubscribeData;
+          throw new Error(`Unsupported operation: ${operation}`);
         }
-      } else if (operation === 'smsSendOne') {
-        const listId = this.getNodeParameter('listId', i) as number;
-        const text = this.getNodeParameter('smsText', i) as string;
-        const to = this.getNodeParameter('smsTo', i) as string;
-
-        response = await newsmanRequest({
-          endpoint: 'sms',
-          method: 'sendone',
-          httpMethod: 'POST',
-          body: { list_id: listId, text, to },
-        });
-      } else {
-        throw new Error(`Unsupported operation: ${operation}`);
+      } catch (error) {
+        if (operation === 'scheduleAutomatedNewsletter') {
+          const errMsg =
+            error instanceof Error ? error.message : String(error);
+          await maybeTeamAlert(i, `Auto NL failure: ${errMsg}`);
+        }
+        throw error;
       }
 
       returnData.push(unwrap(response));
@@ -830,4 +629,424 @@ export class Newsman implements INodeType {
 
     return [this.helpers.returnJsonArray(returnData)];
   }
+}
+
+async function runAutomatedNewsletter(
+  this: IExecuteFunctions,
+  ctx: {
+    itemIndex: number;
+    newsmanRequest: (options: {
+      endpoint: string;
+      method: string;
+      httpMethod: 'GET' | 'POST';
+      qs?: Record<string, any>;
+      body?: Record<string, any>;
+    }) => Promise<any>;
+    unwrap: (value: any) => any;
+    maybeTeamAlert: (itemIndex: number, message: string) => Promise<void>;
+  },
+): Promise<Record<string, any>> {
+  const i = ctx.itemIndex;
+  const listId = this.getNodeParameter('listId', i) as number;
+  const draftId = this.getNodeParameter('draftId', i) as string;
+  const automationMode = this.getNodeParameter(
+    'automationMode',
+    i,
+    'preview',
+  ) as string;
+  const isPreview = automationMode === 'preview';
+  const isSendTest = automationMode === 'sendTest';
+  const productGroupsMap = parseJson(
+    this.getNodeParameter('productGroupsMapJson', i) as unknown,
+    'productGroupsMapJson',
+  );
+  const subjects = parseJson(
+    this.getNodeParameter('subjectsJson', i) as unknown,
+    'subjectsJson',
+  );
+  const shuffleProducts = this.getNodeParameter(
+    'shuffleProducts',
+    i,
+  ) as boolean;
+  const maxProductsPerGroup = this.getNodeParameter(
+    'maxProductsPerGroup',
+    i,
+  ) as number;
+  const titleWordLimit = this.getNodeParameter('titleWordLimit', i) as number;
+  const website = this.getNodeParameter('website', i) as string;
+  const cdnBaseUrl = this.getNodeParameter('cdnBaseUrl', i) as string;
+  const rewriteImagesViaCdn = this.getNodeParameter(
+    'rewriteImagesViaCdn',
+    i,
+  ) as boolean;
+  const productImageResizeMode = this.getNodeParameter(
+    'productImageResizeMode',
+    i,
+    'none',
+  ) as CdnResizeMode;
+  const productImageWidth = this.getNodeParameter(
+    'productImageWidth',
+    i,
+    0,
+  ) as number;
+  const productImageHeight = this.getNodeParameter(
+    'productImageHeight',
+    i,
+    0,
+  ) as number;
+  const scheduleDelayMinutes = this.getNodeParameter(
+    'scheduleDelayMinutes',
+    i,
+    3,
+  ) as number;
+  // Prefer dedicated automated-schedule fields; fall back for older saved nodes
+  const scheduleTimeRaw = (
+    (this.getNodeParameter('scheduleTimeAutomated', i, '') as string) ||
+    (this.getNodeParameter('scheduleTime', i, '') as string) ||
+    ''
+  ).trim();
+  const postScheduleAction = this.getNodeParameter(
+    'postScheduleAction',
+    i,
+    'none',
+  ) as string;
+  const segmentIds =
+    parseJson(
+      this.getNodeParameter(
+        'segmentIdsJsonAutomated',
+        i,
+        this.getNodeParameter('segmentIdsJson', i, '[]'),
+      ) as unknown,
+      'segmentIdsJsonAutomated',
+    ) ?? [];
+  const bannerSource = this.getNodeParameter('bannerSource', i) as string;
+  const includeHtml = isPreview
+    ? true
+    : (this.getNodeParameter('includeHtml', i, false) as boolean);
+  const extraCompileParams =
+    parseJson(
+      this.getNodeParameter('extraCompileParamsJson', i, '{}') as unknown,
+      'extraCompileParamsJson',
+    ) ?? {};
+
+  if (!productGroupsMap || typeof productGroupsMap !== 'object' || Array.isArray(productGroupsMap)) {
+    throw new Error(
+      'Product Groups Map JSON must be an object of handlebarsKey → product_group_id',
+    );
+  }
+  if (!Array.isArray(subjects) || subjects.length < 1) {
+    throw new Error('Subjects JSON must be a non-empty array of strings');
+  }
+
+  const subject = String(subjects[Math.floor(Math.random() * subjects.length)]);
+  const label = website?.trim() || `list ${listId}`;
+
+  const compileParams: Record<string, any> = {
+    ...(typeof extraCompileParams === 'object' && extraCompileParams
+      ? extraCompileParams
+      : {}),
+  };
+  const productCounts: Record<string, number> = {};
+
+  for (const [key, groupId] of Object.entries(
+    productGroupsMap as Record<string, any>,
+  )) {
+    const productsRaw = await ctx.newsmanRequest({
+      endpoint: 'feeds',
+      method: 'getProductGroupProducts',
+      httpMethod: 'GET',
+      qs: {
+        list_id: listId,
+        product_group_id: String(groupId),
+        options: JSON.stringify({}),
+      },
+    });
+    const productsList = Array.isArray(productsRaw)
+      ? productsRaw
+      : Array.isArray(ctx.unwrap(productsRaw))
+        ? ctx.unwrap(productsRaw)
+        : [];
+
+    const normalized = normalizeProductGroup(productsList, {
+      titleWordLimit,
+      shuffle: shuffleProducts,
+      maxProducts: maxProductsPerGroup,
+      rewriteViaCdn: rewriteImagesViaCdn,
+      website,
+      cdnBaseUrl,
+      resizeMode: productImageResizeMode,
+      imageWidth: productImageWidth,
+      imageHeight: productImageHeight,
+    });
+
+    if (normalized.length < 1) {
+      const msg = `${label}: insufficient products for group '${key}' (id ${groupId}) for NL ${subject}`;
+      await ctx.maybeTeamAlert(i, msg);
+      throw new Error(msg);
+    }
+
+    compileParams[key] = normalized;
+    productCounts[key] = normalized.length;
+  }
+
+  if (bannerSource === 'manual') {
+    let bannerSrc = this.getNodeParameter('bannerSrc', i) as string;
+    const bannerUrl = this.getNodeParameter('bannerUrl', i) as string;
+    if (!bannerSrc?.trim() || !bannerUrl?.trim()) {
+      const msg = `${label}: banner src/url missing for NL ${subject}`;
+      await ctx.maybeTeamAlert(i, msg);
+      throw new Error(msg);
+    }
+    if (rewriteImagesViaCdn && website?.trim()) {
+      const bannerImageResizeMode = this.getNodeParameter(
+        'bannerImageResizeMode',
+        i,
+        'none',
+      ) as CdnResizeMode;
+      const bannerImageWidth = this.getNodeParameter(
+        'bannerImageWidth',
+        i,
+        0,
+      ) as number;
+      const bannerImageHeight = this.getNodeParameter(
+        'bannerImageHeight',
+        i,
+        0,
+      ) as number;
+      bannerSrc = buildStandardCdnUrl({
+        website,
+        imgSource: bannerSrc,
+        cdnBaseUrl,
+        resizeMode: bannerImageResizeMode,
+        width: bannerImageWidth,
+        height: bannerImageHeight,
+      });
+    }
+    compileParams.banner_src = bannerSrc;
+    compileParams.banner_url = bannerUrl;
+  } else if (bannerSource === 'brandfetch') {
+    const siteUrl = this.getNodeParameter('brandfetchSiteUrl', i) as string;
+    const headers =
+      parseJson(
+        this.getNodeParameter('brandfetchHeadersJson', i, '{}') as unknown,
+        'brandfetchHeadersJson',
+      ) ?? {};
+    if (!siteUrl?.trim()) {
+      const msg = `${label}: brandfetch site URL missing for NL ${subject}`;
+      await ctx.maybeTeamAlert(i, msg);
+      throw new Error(msg);
+    }
+
+    let brandResponse: any;
+    try {
+      brandResponse = await this.helpers.httpRequest({
+        method: 'GET',
+        url: 'https://bftch.newsmanapp.com/api/brand',
+        qs: { url: siteUrl },
+        headers: typeof headers === 'object' && headers ? headers : {},
+        json: true,
+      });
+    } catch (error) {
+      const msg = `${label}: brandfetch failed for NL ${subject}: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      await ctx.maybeTeamAlert(i, msg);
+      throw new Error(msg);
+    }
+
+    const brand = ctx.unwrap(brandResponse) ?? brandResponse;
+    let bannerSrc =
+      brand?.banner_src ||
+      brand?.src ||
+      brand?.image ||
+      brand?.banner?.src ||
+      '';
+    const bannerUrl =
+      brand?.banner_url ||
+      brand?.href ||
+      brand?.url ||
+      brand?.banner?.href ||
+      siteUrl;
+
+    if (!bannerSrc) {
+      const msg = `${label}: brandfetch returned no banner image for NL ${subject}`;
+      await ctx.maybeTeamAlert(i, msg);
+      throw new Error(msg);
+    }
+
+    if (rewriteImagesViaCdn && website?.trim()) {
+      const bannerImageResizeMode = this.getNodeParameter(
+        'bannerImageResizeMode',
+        i,
+        'none',
+      ) as CdnResizeMode;
+      const bannerImageWidth = this.getNodeParameter(
+        'bannerImageWidth',
+        i,
+        0,
+      ) as number;
+      const bannerImageHeight = this.getNodeParameter(
+        'bannerImageHeight',
+        i,
+        0,
+      ) as number;
+      bannerSrc = buildStandardCdnUrl({
+        website,
+        imgSource: String(bannerSrc),
+        cdnBaseUrl,
+        resizeMode: bannerImageResizeMode,
+        width: bannerImageWidth,
+        height: bannerImageHeight,
+      });
+    }
+
+    compileParams.banner_src = bannerSrc;
+    compileParams.banner_url = bannerUrl;
+  }
+
+  const parsed = await ctx.newsmanRequest({
+    endpoint: 'draft',
+    method: 'getParseDraftHTMLHandlebars',
+    httpMethod: 'POST',
+    body: {
+      list_id: listId,
+      draft_id: draftId,
+      compile_params: compileParams,
+    },
+  });
+  const parsedData = ctx.unwrap(parsed) ?? parsed;
+  const html = parsedData?.parsed_html ?? parsedData?.html;
+  if (!html) {
+    throw new Error('Draft parse did not return parsed_html');
+  }
+
+  if (isPreview || isSendTest) {
+    const output: Record<string, any> = {
+      mode: isSendTest ? 'sendTest' : 'preview',
+      subject,
+      html,
+      product_counts: productCounts,
+      draft_id: draftId,
+      list_id: listId,
+      parsed: parsedData,
+    };
+
+    if (isSendTest) {
+      const emails = parseEmailList(
+        this.getNodeParameter('testEmails', i) as unknown,
+        'Test Emails',
+      );
+      const sendTestResult = await ctx.newsmanRequest({
+        endpoint: 'newsletter',
+        method: 'sendTest',
+        httpMethod: 'POST',
+        body: {
+          list_id: listId,
+          html,
+          text: '',
+          emails,
+          subject,
+        },
+      });
+      output.test_emails = emails;
+      output.send_test_result = ctx.unwrap(sendTestResult);
+    }
+
+    return output;
+  }
+
+  const created = await ctx.newsmanRequest({
+    endpoint: 'newsletter',
+    method: 'create',
+    httpMethod: 'POST',
+    body: {
+      list_id: listId,
+      html,
+      text: false,
+      newsletter_props: {
+        encoding: 'utf-8',
+        subject,
+      },
+    },
+  });
+  const createdData = ctx.unwrap(created);
+  const newsletterId =
+    typeof createdData === 'number' || typeof createdData === 'string'
+      ? createdData
+      : createdData?.newsletter_id ?? createdData?.id;
+  if (!newsletterId) {
+    throw new Error('newsletter.create did not return newsletter_id');
+  }
+
+  if (Array.isArray(segmentIds) && segmentIds.length > 0) {
+    await ctx.newsmanRequest({
+      endpoint: 'newsletter',
+      method: 'setSegments',
+      httpMethod: 'POST',
+      body: {
+        newsletter_id: newsletterId,
+        segment_ids: segmentIds,
+      },
+    });
+  }
+
+  let scheduleTime = scheduleTimeRaw;
+  if (!scheduleTime) {
+    const delayMs = Math.max(0, Number(scheduleDelayMinutes) || 0) * 60 * 1000;
+    const when = new Date(Date.now() + delayMs);
+    scheduleTime = formatUtcScheduleTime(when);
+  }
+
+  const scheduleResult = await ctx.newsmanRequest({
+    endpoint: 'newsletter',
+    method: 'schedule',
+    httpMethod: 'POST',
+    body: {
+      newsletter_id: newsletterId,
+      schedule_time: scheduleTime,
+    },
+  });
+
+  let confirmResult: any = null;
+  if (postScheduleAction === 'sendConfirm') {
+    confirmResult = await ctx.newsmanRequest({
+      endpoint: 'newsletter',
+      method: 'sendConfirm',
+      httpMethod: 'POST',
+      body: { newsletter_id: newsletterId },
+    });
+  } else if (postScheduleAction === 'confirm') {
+    confirmResult = await ctx.newsmanRequest({
+      endpoint: 'newsletter',
+      method: 'confirm',
+      httpMethod: 'POST',
+      body: { newsletter_id: newsletterId },
+    });
+  }
+
+  const output: Record<string, any> = {
+    mode: 'schedule',
+    subject,
+    newsletter_id: newsletterId,
+    schedule_time: scheduleTime,
+    schedule_result: ctx.unwrap(scheduleResult),
+    post_schedule_action: postScheduleAction,
+    confirm_result: confirmResult === null ? null : ctx.unwrap(confirmResult),
+    product_counts: productCounts,
+    draft_id: draftId,
+    list_id: listId,
+  };
+  if (includeHtml) {
+    output.html = html;
+    output.parsed = parsedData;
+  }
+  return output;
+}
+
+function formatUtcScheduleTime(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}` +
+    ` ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`
+  );
 }

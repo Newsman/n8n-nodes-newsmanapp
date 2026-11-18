@@ -83,12 +83,11 @@ jobs:
           # Pin Node 22: current GHA lts/* is Node 26, which fails npm ci
           # when building isolated-vm (pulled in via @n8n/node-cli).
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-          # Critical for Trusted Publishing: setup-node defaults token to
-          # github.token, which becomes NODE_AUTH_TOKEN and overrides OIDC
-          # (npm then returns 404 on PUT). Empty token keeps OIDC in charge.
-          token: ''
           cache: 'npm'
+          # Do not set registry-url here. With registry-url, setup-node always
+          # writes NODE_AUTH_TOKEN (github.token, or placeholder XXXXX-… when
+          # token is empty), which overrides npm Trusted Publishing OIDC and
+          # causes HTTP 404 on publish.
 
       - name: Install dependencies
         run: npm ci

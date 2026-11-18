@@ -84,15 +84,18 @@ jobs:
           # when building isolated-vm (pulled in via @n8n/node-cli).
           node-version: '22'
           cache: 'npm'
-          # Do not set registry-url here. With registry-url, setup-node always
-          # writes NODE_AUTH_TOKEN (github.token, or placeholder XXXXX-… when
-          # token is empty), which overrides npm Trusted Publishing OIDC and
-          # causes HTTP 404 on publish.
+          # Do not set registry-url: it injects NODE_AUTH_TOKEN and breaks OIDC.
 
       - name: Install dependencies
         run: npm ci
 
+      # Trusted Publishing OIDC needs npm >= 11.5; Node 22 ships npm 10.x.
+      - name: Upgrade npm for Trusted Publishing
+        run: npm install -g npm@11
+
       # Auth via npm Trusted Publishing (OIDC). Publisher on npmjs must match:
       # Newsman/n8n-nodes-newsmanapp → workflow publish.yml (no Environment).
       - name: Publish
-        run: npm publish --provenance --access public
+        run: |
+          npm --version
+          npm publish --provenance --access public

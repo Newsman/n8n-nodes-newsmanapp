@@ -80,7 +80,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
+          # Pin Node 22: current GHA lts/* is Node 26, which fails npm ci
+          # when building isolated-vm (pulled in via @n8n/node-cli).
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies

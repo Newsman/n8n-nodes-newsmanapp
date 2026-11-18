@@ -83,14 +83,16 @@ jobs:
           # Pin Node 22: current GHA lts/* is Node 26, which fails npm ci
           # when building isolated-vm (pulled in via @n8n/node-cli).
           node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
+      # Auth: prefer repo secret N8N_TOKEN (automation token). If unset/empty,
+      # npm Trusted Publishing via OIDC (id-token: write) is used instead.
+      # A stale/invalid token yields HTTP 404 on PUT to the registry.
       - name: Publish
-        run: |
-          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
-          npm publish --provenance --access public
+        run: npm publish --provenance --access public
         env:
-          NPM_TOKEN: ${{ secrets.N8N_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.N8N_TOKEN }}

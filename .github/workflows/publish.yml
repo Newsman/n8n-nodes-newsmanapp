@@ -84,14 +84,16 @@ jobs:
           # when building isolated-vm (pulled in via @n8n/node-cli).
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+          # Critical for Trusted Publishing: setup-node defaults token to
+          # github.token, which becomes NODE_AUTH_TOKEN and overrides OIDC
+          # (npm then returns 404 on PUT). Empty token keeps OIDC in charge.
+          token: ''
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      # Auth via npm Trusted Publishing (OIDC only).
-      # Do not set NODE_AUTH_TOKEN at all — an empty env var overrides OIDC and
-      # yields HTTP 404 on PUT. Trusted Publisher must match this workflow file:
-      # Newsman/n8n-nodes-newsmanapp → publish.yml (no GitHub Environment).
+      # Auth via npm Trusted Publishing (OIDC). Publisher on npmjs must match:
+      # Newsman/n8n-nodes-newsmanapp → workflow publish.yml (no Environment).
       - name: Publish
         run: npm publish --provenance --access public
